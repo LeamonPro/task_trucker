@@ -1,6 +1,6 @@
 // src/App.jsx
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Plus, Bell, LogOut, Briefcase, Wrench, CheckCircle, Clock, UsersRound, Archive, FileText, ClipboardList, Hourglass } from 'lucide-react';
+import { Plus, Bell, LogOut, Briefcase, Wrench, CheckCircle, Clock, UsersRound, Archive, FileText, ClipboardList, Hourglass, Camera } from 'lucide-react';
 import { apiRequest, getAuthToken } from './api/api';
 import LoginView from './components/auth/LoginView';
 import TaskCard from './components/tasks/TaskCard';
@@ -12,6 +12,7 @@ import TaskDetailsModal from './components/modals/TaskDetailsModal';
 import { AddUserDialog, EditUserDialog } from './components/modals/UserModals';
 import { CycleVisiteModal, AdminCycleVisitInfoModal } from './components/modals/CycleVisiteModals';
 import { PreventiveTemplateModal, PreventiveChecklistModal } from './components/modals/PreventiveModals';
+import PreventiveTaskManagementModal from './components/modals/PreventiveTaskManagementModal';
 import OiFormModal from './components/modals/OiFormModal';
 import TechnicianFormModal from './components/modals/TechnicianFormModal';
 import AdminOiManagementView from './components/admin/AdminOiManagementView';
@@ -59,6 +60,7 @@ function App() {
   const [isLoadingTechnicians, setIsLoadingTechnicians] = useState(false);
   const [isTechnicianFormModalOpen, setIsTechnicianFormModalOpen] = useState(false);
   const [editingTechnician, setEditingTechnician] = useState(null);
+  const [isPreventiveTaskManagementOpen, setIsPreventiveTaskManagementOpen] = useState(false);
 
   const handleLogin = async (username, password) => {
     setLoginError('');
@@ -124,6 +126,7 @@ function App() {
     setIsTechnicianFormModalOpen(false);
     setEditingTechnician(null);
     setIsLoadingTechnicians(false);
+    setIsPreventiveTaskManagementOpen(false);
   };
 
   const fetchOrdresImputationList = useCallback(async () => {
@@ -396,9 +399,14 @@ function App() {
                     </>
                 )}
                 {(currentUser.role === 'Admin' || currentUser.role === 'Chef de Parc') && (
-                    <Button variant="ghost" size="icon" onClick={() => setCurrentView('changeOiHours')} title="Modifier Heures OI" className={cn("text-gray-600 hover:text-gray-800", currentView === 'changeOiHours' ? 'text-blue-600 bg-blue-100' : '')}>
-                        <Hourglass className="h-5 w-5" />
-                    </Button>
+                    <>
+                        <Button variant="ghost" size="icon" onClick={() => setCurrentView('changeOiHours')} title="Modifier Heures OI" className={cn("text-gray-600 hover:text-gray-800", currentView === 'changeOiHours' ? 'text-blue-600 bg-blue-100' : '')}>
+                            <Hourglass className="h-5 w-5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => setIsPreventiveTaskManagementOpen(true)} title="Gestion Tâches Préventives" className="text-gray-600 hover:text-gray-800">
+                            <Camera className="h-5 w-5" />
+                        </Button>
+                    </>
                 )}
                 <div className="relative">
                     <Button variant="ghost" size="icon" onClick={handleToggleNotifications} className="relative text-gray-600 hover:text-gray-800"> <Bell className="h-5 w-5" /> {unreadNotificationCount > 0 && ( <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full ring-2 ring-white bg-red-500" title={`${unreadNotificationCount} non lues`}/> )} </Button>
@@ -465,6 +473,17 @@ function App() {
       {currentUser?.role === 'Chef de Parc' && selectedOrdreForCycleVisite && <CycleVisiteModal isOpen={isCycleVisiteModalOpen} onClose={() => { setIsCycleVisiteModalOpen(false); setSelectedOrdreForCycleVisite(null); }} ordreImputation={selectedOrdreForCycleVisite} onUpdateCycleVisite={handleUpdateCycleVisite} />}
       {currentUser?.role === 'Admin' && selectedNotificationForAdminInfo && <AdminCycleVisitInfoModal isOpen={isAdminCycleVisitInfoModalOpen} onClose={() => { setIsAdminCycleVisitInfoModalOpen(false); setSelectedNotificationForAdminInfo(null); }} info={selectedNotificationForAdminInfo} />}
       {(currentUser?.role === 'Admin' || currentUser?.role === 'Chef de Parc') && preventiveChecklistData && <PreventiveChecklistModal isOpen={isPreventiveChecklistModalOpen} onClose={() => { setIsPreventiveChecklistModalOpen(false); setPreventiveChecklistData(null); }} onSubmit={handleSubmitPreventiveChecklist} checklistData={preventiveChecklistData} />}
+      
+      {/* Preventive Task Management Modal */}
+      {(currentUser?.role === 'Admin' || currentUser?.role === 'Chef de Parc') && (
+        <PreventiveTaskManagementModal
+          isOpen={isPreventiveTaskManagementOpen}
+          onClose={() => setIsPreventiveTaskManagementOpen(false)}
+          currentUser={currentUser}
+          ordresImputation={ordresImputation}
+          technicians={technicians}
+        />
+      )}
     </div>
   );
 }
