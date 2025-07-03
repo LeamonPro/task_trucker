@@ -1,0 +1,60 @@
+# Django Framework
+Django==4.2.7
+djangorestframework==3.14.0
+
+# Database
+psycopg2-binary==2.9.7  # PostgreSQL adapter (if using PostgreSQL)
+# OR use sqlite3 (built into Python) for development
+
+# Authentication & Authorization
+djangorestframework-authtoken==1.0.0
+
+# Image Processing & File Handling
+Pillow==10.1.0
+
+# PDF Generation
+reportlab==4.0.7
+
+# CORS Headers (if frontend is on different domain)
+django-cors-headers==4.3.1
+
+# Environment Variables
+python-decouple==3.8
+# OR python-dotenv==1.0.0
+
+# Development & Debugging
+django-debug-toolbar==4.2.0  # Only for development
+
+# Production Server (choose one)
+gunicorn==21.2.0  # For production deployment
+# OR uwsgi==2.0.22
+
+# Static Files & Media (for production)
+whitenoise==6.6.0  # For serving static files in production
+
+# Time Zone Support
+pytz==2023.3
+
+# API Documentation (optional)
+drf-spectacular==0.26.5  # For OpenAPI/Swagger documentation
+
+# Testing (optional)
+factory-boy==3.3.0  # For test data generation
+pytest-django==4.7.0  # For pytest testing
+
+# Security & Performance (production)
+django-ratelimit==4.1.0  # Rate limiting
+django-extensions==3.2.3  # Useful extensions
+
+# Monitoring & Logging (production)
+sentry-sdk==1.38.0  # Error tracking (optional)
+
+# Data Validation
+django-phonenumber-field==7.2.0  # Phone number validation (if needed)
+
+# Caching (optional)
+redis==5.0.1  # If using Redis for caching
+django-redis==5.4.0
+
+# Backup & Migration Tools (optional)
+django-dbbackup==4.0.2  # Database backup utility
