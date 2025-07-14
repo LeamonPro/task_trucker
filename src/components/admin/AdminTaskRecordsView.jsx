@@ -6,8 +6,8 @@ import AdvancementNoteDetailsModal from '../modals/AdvancementNoteDetailsModal';
 import { apiRequest } from '../../api/api';
 import { getTaskTypeLabel } from '../../utils';
 
-const AdminTaskRecordsView = ({ ordresImputation, onOpenLightbox }) => {
-    const [reportFilters, setReportFilters] = useState({ startDate: '', endDate: '', ordreImputationValue: [], });
+const AdminTaskRecordsView = ({ ordresImputation, technicians, onOpenLightbox }) => {
+    const [reportFilters, setReportFilters] = useState({ startDate: '', endDate: '', ordreImputationValue: [], technicienIds: [] });
     const [reportData, setReportData] = useState([]);
     const [isLoadingReport, setIsLoadingReport] = useState(false);
     const [reportError, setReportError] = useState('');
@@ -15,7 +15,7 @@ const AdminTaskRecordsView = ({ ordresImputation, onOpenLightbox }) => {
 
     const handleFilterChange = (e) => {
         const { name, value, options } = e.target;
-        if (name === 'ordreImputationValue' && e.target.multiple) {
+        if ((name === 'ordreImputationValue' || name === 'technicienIds') && e.target.multiple) {
             const selectedValues = Array.from(options).filter(option => option.selected).map(option => option.value);
             setReportFilters(prev => ({ ...prev, [name]: selectedValues }));
         } else {
@@ -40,6 +40,11 @@ const AdminTaskRecordsView = ({ ordresImputation, onOpenLightbox }) => {
         if (reportFilters.ordreImputationValue && reportFilters.ordreImputationValue.length > 0) {
             reportFilters.ordreImputationValue.forEach(oiValue => {
                 queryParams.append('ordre_imputation_value', oiValue);
+            });
+        }
+        if (reportFilters.technicienIds && reportFilters.technicienIds.length > 0) {
+            reportFilters.technicienIds.forEach(techId => {
+                queryParams.append('technicien_id', techId);
             });
         }
         if (format === 'pdf') queryParams.append('format', 'pdf');
@@ -96,7 +101,7 @@ const AdminTaskRecordsView = ({ ordresImputation, onOpenLightbox }) => {
             <h2 className="text-xl font-semibold text-gray-700 flex items-center mb-6">
                 <FileText className="h-6 w-6 mr-2 text-blue-600" /> Rapports d'Activités des Tâches
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 p-4 border rounded-md bg-slate-50 shadow">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 p-4 border rounded-md bg-slate-50 shadow">
                 <div>
                     <Label htmlFor="startDate-report">Date de Début</Label>
                     <Input type="date" id="startDate-report" name="startDate" value={reportFilters.startDate} onChange={handleFilterChange} className="bg-white"/>
@@ -117,6 +122,21 @@ const AdminTaskRecordsView = ({ ordresImputation, onOpenLightbox }) => {
                     >
                         {ordresImputation.map(oi => (
                             <option key={oi.id_ordre} value={oi.value}>{oi.value}</option>
+                        ))}
+                    </Select>
+                </div>
+                <div>
+                    <Label htmlFor="technicienIds-report">Techniciens</Label>
+                    <Select
+                        id="technicienIds-report"
+                        name="technicienIds"
+                        multiple
+                        value={reportFilters.technicienIds}
+                        onChange={handleFilterChange}
+                        className="bg-white min-h-[100px]"
+                    >
+                        {technicians.map(tech => (
+                            <option key={tech.id_technician} value={tech.id_technician}>{tech.name}</option>
                         ))}
                     </Select>
                 </div>

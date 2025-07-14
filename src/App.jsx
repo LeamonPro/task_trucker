@@ -1,4 +1,3 @@
-// src/App.jsx
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Plus, Bell, LogOut, Briefcase, Wrench, CheckCircle, Clock, UsersRound, Archive, FileText, ClipboardList, Hourglass } from 'lucide-react';
 import { apiRequest, getAuthToken } from './api/api';
@@ -285,7 +284,10 @@ function App() {
             dataFetchPromise = fetchAdminUsers();
         } else if (currentView === 'taskRecords' && currentUser.role === 'Admin') {
             if (ordresImputation.length === 0) {
-                dataFetchPromise = fetchOrdresImputationList(); 
+                fetchOrdresImputationList(); 
+            }
+            if (technicians.length === 0) {
+                fetchTechniciansList();
             }
         } else if (currentView === 'preventiveTemplates' && currentUser.role === 'Admin') {
             dataFetchPromise = fetchPreventiveTaskTemplates();
@@ -313,7 +315,7 @@ function App() {
         setPreventiveTaskTemplates([]);
         setLoginError('');
     }
-  }, [currentUser, currentView, filter, fetchTaskData, fetchAdminUsers, fetchPreventiveTaskTemplates, fetchOrdresImputationList, fetchTechniciansList, ordresImputation.length]);
+  }, [currentUser, currentView, filter, fetchTaskData, fetchAdminUsers, fetchPreventiveTaskTemplates, fetchOrdresImputationList, fetchTechniciansList, ordresImputation.length, technicians.length]);
 
   const markNotificationAsRead = useCallback(async (id) => { if (!id) return; if (String(id).startsWith('local-')) { setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n)); return; } try { await apiRequest(`/notifications/${id}/mark-as-read/`, 'POST'); setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n)); } catch (error) { console.error("echec du marquage de la notification comme lue:", error); } }, []);
   const markAllNotificationsAsRead = async () => { try { await apiRequest('/notifications/mark-all-as-read/', 'POST'); setNotifications(prev => prev.map(n => ({ ...n, read: true }) )); } catch (error) { console.error("echec du marquage de toutes les notifications API comme lues:", error); } };
@@ -323,6 +325,22 @@ function App() {
   const handleAddTask = async (taskPayload) => { const newTask = await apiRequest('/tasks/', 'POST', taskPayload); await fetchTaskData(); return newTask; };
   const handleDeleteTask = async (taskId) => { await apiRequest(`/tasks/${taskId}/`, 'DELETE'); await fetchTaskData(); setSelectedTask(null); };
   const handleUpdateTask = async (taskId, updatesPayload) => { const updatedTask = await apiRequest(`/tasks/${taskId}/`, 'PATCH', updatesPayload); await fetchTaskData(); if (selectedTask && selectedTask.id === taskId) { try { const refreshedSelectedTask = await apiRequest(`/tasks/${taskId}/`); if (refreshedSelectedTask) { setSelectedTask({ ...refreshedSelectedTask, id: String(refreshedSelectedTask.id), ordre: refreshedSelectedTask.ordre ? { ...refreshedSelectedTask.ordre, date_prochain_cycle_visite: refreshedSelectedTask.ordre.date_prochain_cycle_visite || null, date_derniere_visite_effectuee: refreshedSelectedTask.ordre.date_derniere_visite_effectuee || null, dernier_cycle_visite_resultat: refreshedSelectedTask.ordre.dernier_cycle_visite_resultat === undefined ? null : refreshedSelectedTask.ordre.dernier_cycle_visite_resultat, } : null, advancement_notes: (refreshedSelectedTask.advancement_notes || []).map(note => ({ ...note, task_display_id: note.task_display_id || refreshedSelectedTask.task_id_display || `ORDT-${refreshedSelectedTask.id}`, images: note.images || [] })) }); } else { setSelectedTask(null); } } catch (error) { console.error("Failed to refresh selected task details:", error); setSelectedTask(null); } } return updatedTask; };
+  const handlePrintTask = async (taskId) => {
+    try {
+        const blob = await apiRequest(`/tasks/${taskId}/print/`, 'GET', null, false, 'blob');
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `tache_${taskId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error("Failed to print task:", error);
+        setLoginError(`Failed to print task: ${error.message}`);
+    }
+  };
   const filteredTasks = useMemo(() => { if (!currentUser || !tasks) return []; return tasks.filter(task => task.status === filter); }, [tasks, filter, currentUser]);
   const handleAddAdminUser = async (userPayload) => { const newUser = await apiRequest('/admin/users/', 'POST', userPayload); await fetchAdminUsers(); return newUser; };
   const handleUpdateAdminUser = async (userId, userPayload) => { const updatedUser = await apiRequest(`/admin/users/${userId}/`, 'PATCH', userPayload); await fetchAdminUsers(); return updatedUser; };
@@ -437,7 +455,7 @@ function App() {
           )}
 
           {currentUser && currentUser.role === 'Admin' && currentView === 'userManagement' && <AdminUserManagementView users={adminUsers} onAddUserClick={handleOpenAddUserDialog} onEditUserClick={handleOpenEditUserDialog} onDeleteUser={handleDeleteAdminUser} isLoading={isLoadingAdminUsers} />}
-          {currentUser && currentUser.role === 'Admin' && currentView === 'taskRecords' && <AdminTaskRecordsView ordresImputation={ordresImputation} onOpenLightbox={openLightbox} />}
+          {currentUser && currentUser.role === 'Admin' && currentView === 'taskRecords' && <AdminTaskRecordsView ordresImputation={ordresImputation} technicians={technicians} onOpenLightbox={openLightbox} />}
           {currentUser && currentUser.role === 'Admin' && currentView === 'oiManagement' && <AdminOiManagementView ordresImputation={ordresImputation} onOpenOiFormModal={handleOpenOiFormModal} onDeleteOi={handleDeleteOi} isLoading={isLoadingOis || (isLoadingData && ordresImputation.length === 0)} />}
           {currentUser && currentUser.role === 'Admin' && currentView === 'technicianManagement' && <AdminTechnicianManagementView technicians={technicians} onOpenTechnicianFormModal={handleOpenTechnicianFormModal} onDeleteTechnician={handleDeleteTechnician} isLoading={isLoadingTechnicians || (isLoadingData && technicians.length === 0)} />}
           {currentUser && currentUser.role === 'Admin' && currentView === 'preventiveTemplates' && <AdminPreventiveTemplatesView templates={preventiveTaskTemplates} ordresImputation={ordresImputation} onAddClick={() => handleOpenPreventiveTemplateModal(null)} onEditClick={handleOpenPreventiveTemplateModal} onDeleteClick={handleDeletePreventiveTemplate} isLoading={isLoadingPreventiveTemplates || (isLoadingData && ordresImputation.length === 0)} />}
@@ -451,7 +469,7 @@ function App() {
       {/* --- Modals --- */}
       {currentUser?.role === 'Admin' && <AddTaskModal isOpen={isAddTaskModalOpen} onClose={() => setIsAddTaskModalOpen(false)} onAddTask={handleAddTask} chefsDeParc={chefsDeParc} ordresImputation={ordresImputation} />}
       {currentUser?.role === 'Chef de Parc' && <AddTaskChefModal isOpen={isAddTaskChefModalOpen} onClose={() => setIsAddTaskChefModalOpen(false)} onAddTask={handleAddTask} ordresImputation={ordresImputation} technicians={technicians} />}
-      {selectedTask && currentUser && <TaskDetailsModal task={selectedTask} isOpen={!!selectedTask} onClose={handleCloseDetailsModal} currentUser={currentUser} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} chefsDeParc={chefsDeParc} ordresImputation={ordresImputation} technicians={technicians} onOpenLightbox={openLightbox} />}
+      {selectedTask && currentUser && <TaskDetailsModal task={selectedTask} isOpen={!!selectedTask} onClose={handleCloseDetailsModal} currentUser={currentUser} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onPrintTask={handlePrintTask} chefsDeParc={chefsDeParc} ordresImputation={ordresImputation} technicians={technicians} onOpenLightbox={openLightbox} />}
       <ImageLightbox src={lightboxImage.src} alt={lightboxImage.alt} isOpen={lightboxImage.isOpen} onClose={closeLightbox} />
       {currentUser?.role === 'Admin' && (
         <>
@@ -464,7 +482,7 @@ function App() {
       )}
       {currentUser?.role === 'Chef de Parc' && selectedOrdreForCycleVisite && <CycleVisiteModal isOpen={isCycleVisiteModalOpen} onClose={() => { setIsCycleVisiteModalOpen(false); setSelectedOrdreForCycleVisite(null); }} ordreImputation={selectedOrdreForCycleVisite} onUpdateCycleVisite={handleUpdateCycleVisite} />}
       {currentUser?.role === 'Admin' && selectedNotificationForAdminInfo && <AdminCycleVisitInfoModal isOpen={isAdminCycleVisitInfoModalOpen} onClose={() => { setIsAdminCycleVisitInfoModalOpen(false); setSelectedNotificationForAdminInfo(null); }} info={selectedNotificationForAdminInfo} />}
-      {(currentUser?.role === 'Admin' || currentUser?.role === 'Chef de Parc') && preventiveChecklistData && <PreventiveChecklistModal isOpen={isPreventiveChecklistModalOpen} onClose={() => { setIsPreventiveChecklistModalOpen(false); setPreventiveChecklistData(null); }} onSubmit={handleSubmitPreventiveChecklist} checklistData={preventiveChecklistData} />}
+      {(currentUser?.role === 'Admin' || currentUser?.role === 'Chef de Parc') && preventiveChecklistData && <PreventiveChecklistModal isOpen={isPreventiveChecklistModalOpen} onClose={() => { setIsPreventiveChecklistModalOpen(false); setPreventiveChecklistData(null); }} onSubmit={handleSubmitPreventiveChecklist} checklistData={preventiveChecklistData} technicians={technicians} />}
     </div>
   );
 }

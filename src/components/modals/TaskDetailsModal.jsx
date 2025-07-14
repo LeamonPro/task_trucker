@@ -1,12 +1,12 @@
 // src/components/modals/TaskDetailsModal.jsx
 import React, { useState, useEffect } from 'react';
-import { Briefcase, Info, Users, CalendarDays, Clock, Hash, ListChecks, Wrench, ShieldCheck, PackageOpen, Hourglass, CheckCircle, ImageUp, X, Save, Trash2, Camera, ArrowRight } from 'lucide-react';
+import { Briefcase, Info, Users, CalendarDays, Clock, Hash, ListChecks, Wrench, ShieldCheck, PackageOpen, Hourglass, CheckCircle, ImageUp, X, Save, Trash2, Camera, ArrowRight, Printer, FileText } from 'lucide-react';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter, Button, Input, Select, Textarea, Label, ErrorMessage } from '../ui';
 import { cn, getTaskTypeLabel, TASK_TYPE_OPTIONS } from '../../utils';
 import { apiRequest } from '../../api/api';
 import AdvancementNoteDetailsModal from './AdvancementNoteDetailsModal';
 
-const TaskDetailsModal = ({ task, isOpen, onClose, currentUser, onUpdateTask, onDeleteTask, chefsDeParc, ordresImputation, technicians, onOpenLightbox }) => {
+const TaskDetailsModal = ({ task, isOpen, onClose, currentUser, onUpdateTask, onDeleteTask, onPrintTask, chefsDeParc, ordresImputation, technicians, onOpenLightbox }) => {
     const [editableOrdreValue, setEditableOrdreValue] = useState('');
     const [editableType, setEditableType] = useState('');
     const [editableTasksDescription, setEditableTasksDescription] = useState('');
@@ -23,6 +23,7 @@ const TaskDetailsModal = ({ task, isOpen, onClose, currentUser, onUpdateTask, on
     const [editableEndDate, setEditableEndDate] = useState('');
     const [editableStartTime, setEditableStartTime] = useState('');
     const [editableEstimatedHours, setEditableEstimatedHours] = useState('');
+    const [editablePermisDeTravail, setEditablePermisDeTravail] = useState(false);
     const [dateError, setDateError] = useState('');
     const [fieldErrors, setFieldErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,6 +59,7 @@ const TaskDetailsModal = ({ task, isOpen, onClose, currentUser, onUpdateTask, on
             setEditableEndDate(task.end_date || '');
             setEditableStartTime(task.start_time ? task.start_time.substring(0, 5) : '');
             setEditableEstimatedHours(task.estimated_hours !== null && task.estimated_hours !== undefined ? task.estimated_hours.toString() : '');
+            setEditablePermisDeTravail(task.permis_de_travail || false);
             setAdvancementNote('');
             setSelectedFiles([]);
             imagePreviews.forEach(url => URL.revokeObjectURL(url));
@@ -88,6 +90,8 @@ const TaskDetailsModal = ({ task, isOpen, onClose, currentUser, onUpdateTask, on
     const canChefEditManagementDetails = isTaskAssignedToCurrentUserChef && !isTaskClosed;
     const canAdminEditManagementDetails = currentUser.role === 'Admin' && !isTaskClosed;
     const canEditAnyDetails = canAdminEditCoreDetails || canChefEditManagementDetails || canAdminEditManagementDetails;
+    const isClosingTask = (isTaskAssignedToCurrentUserChef && task.status === 'in progress' && newStatus === 'closed') || (currentUser.role === 'Admin' && newStatus === 'closed' && task.status !== 'closed');
+
 
     const handleFileChange = (event) => {
         const files = Array.from(event.target.files);
@@ -163,6 +167,10 @@ const TaskDetailsModal = ({ task, isOpen, onClose, currentUser, onUpdateTask, on
             const currentEstimated = task.estimated_hours !== null && task.estimated_hours !== undefined ? parseFloat(task.estimated_hours) : null;
             const newEstimated = editableEstimatedHours !== '' ? parseFloat(editableEstimatedHours) : null;
             if (newEstimated !== currentEstimated) updatesPayload.estimated_hours = newEstimated;
+        }
+
+        if (editablePermisDeTravail !== task.permis_de_travail) {
+            updatesPayload.permis_de_travail = editablePermisDeTravail;
         }
 
         if (currentUser.role === 'Admin' && newStatus !== task.status) {
@@ -262,7 +270,8 @@ const TaskDetailsModal = ({ task, isOpen, onClose, currentUser, onUpdateTask, on
                     <DetailRow label="Date de Fin" value={canAdminEditCoreDetails ? editableEndDate : task.end_date || 'Non defini'} icon={<CalendarDays />} isEditable={canAdminEditCoreDetails} inputType="date" name="editableEndDate" onChange={(e) => {setEditableEndDate(e.target.value); setDateError(''); if(fieldErrors.end_date) setFieldErrors(p => ({...p, end_date: null}));}} disabled={!canAdminEditCoreDetails} error={fieldErrors.end_date || (name === 'editableEndDate' && dateError ? dateError : '')} />
                     {dateError && canAdminEditCoreDetails && !fieldErrors.end_date && <div className="md:col-start-2 md:col-span-2"><ErrorMessage message={dateError} /></div>}
                     <DetailRow label="Statut" icon={<Info />}> <span className={`font-semibold capitalize px-2.5 py-1 rounded-full text-xs inline-block shadow-sm ${ task.status === 'assigned' ? 'bg-blue-100 text-blue-800 border border-blue-300' : task.status === 'in progress' ? 'bg-yellow-100 text-yellow-800 border border-yellow-300' : 'bg-green-100 text-green-800 border border-green-300' }`}>{task.status.replace('_', ' ')}</span> </DetailRow>
-                    {task.status === 'closed' && task.closed_at && <DetailRow label="Clôturé le" value={new Date(task.closed_at).toLocaleString()} icon={<CheckCircle />} isEditable={false} />}
+                    {isTaskClosed && task.closed_at && <DetailRow label="Clôturé le" value={new Date(task.closed_at).toLocaleString()} icon={<CheckCircle />} isEditable={false} />}
+                    {isTaskClosed && task.actual_hours_worked && <DetailRow label="Heures Réelles Travaillées" value={`${parseFloat(task.actual_hours_worked).toFixed(2)}h`} icon={<CheckCircle />} isEditable={false} />}
                 </div>
                 <div className="space-y-4 p-4 border rounded-md bg-slate-100">
                     <h4 className="text-md font-semibold text-gray-700 mb-3 border-b pb-2">Details de Gestion de l'Ordre de travail</h4>
@@ -271,17 +280,47 @@ const TaskDetailsModal = ({ task, isOpen, onClose, currentUser, onUpdateTask, on
                     <div> <Label htmlFor="pdr-detail" className="flex items-center text-sm"><PackageOpen className="h-4 w-4 mr-2 text-gray-500"/>PDR</Label> {shouldDisplayManagementInputs ? ( <> <Textarea id="pdr-detail" value={editablePDR} onChange={(e) => {setEditablePDR(e.target.value); if(fieldErrors.pdr) setFieldErrors(p => ({...p, pdr: null}));}} placeholder="Lister les pièces de rechange" rows={3} disabled={areManagementInputsDisabled} className={cn('text-sm', fieldErrors.pdr ? 'ring-1 ring-red-500 border-red-500' : '')} /> <ErrorMessage message={fieldErrors.pdr} /> </> ) : ( <p className="text-gray-700 bg-gray-200 p-2.5 rounded min-h-[40px] whitespace-pre-wrap text-sm">{task.pdr || <span className="italic text-gray-400">Non specifie</span>}</p> )} </div>
                     <div> <Label htmlFor="estimated_hours-detail" className="flex items-center text-sm"><Clock className="h-4 w-4 mr-2 text-gray-500"/>Heures Estimées</Label> {shouldDisplayManagementInputs ? ( <> <Input id="estimated_hours-detail" name="editableEstimatedHours" type="number" step="0.01" value={editableEstimatedHours} onChange={(e) => {setEditableEstimatedHours(e.target.value); if(fieldErrors.estimated_hours) setFieldErrors(p => ({...p, estimated_hours: null}));}} placeholder="ex: 8.5" disabled={areManagementInputsDisabled} className={cn('text-sm', fieldErrors.estimated_hours ? 'ring-1 ring-red-500 border-red-500' : '')} /> <ErrorMessage message={fieldErrors.estimated_hours} /> </> ) : ( <p className="text-gray-700 bg-gray-200 p-2.5 rounded min-h-[40px] text-sm">{task.estimated_hours !== null && task.estimated_hours !== undefined ? `${task.estimated_hours}h` : <span className="italic text-gray-400">Non specifie</span>}</p> )} </div>
                     <div> <Label htmlFor="hours_of_work-detail" className="flex items-center text-sm"><Hourglass className="h-4 w-4 mr-2 text-gray-500"/>Nouveau Total Heures de Fonctionnement (OI)</Label> {shouldDisplayManagementInputs ? ( <> <Input id="hours_of_work-detail" name="editableHoursOfWork" type="number" step="0.01" value={editableHoursOfWork} onChange={(e) => {setEditableHoursOfWork(e.target.value); if(fieldErrors.hours_of_work) setFieldErrors(p => ({...p, hours_of_work: null}));}} placeholder="ex: 2500.50" disabled={areManagementInputsDisabled} className={cn('text-sm', fieldErrors.hours_of_work ? 'ring-1 ring-red-500 border-red-500' : '')} /> <ErrorMessage message={fieldErrors.hours_of_work} /> </> ) : ( <p className="text-gray-700 bg-gray-200 p-2.5 rounded min-h-[40px] text-sm">{task.hours_of_work !== null && task.hours_of_work !== undefined ? `${task.hours_of_work}h` : <span className="italic text-gray-400">Non specifie</span>}</p> )} </div>
+                    <div>
+                        <Label htmlFor="permis_de_travail-detail" className="flex items-center text-sm">
+                            <FileText className="h-4 w-4 mr-2 text-gray-500" />Permis de Travail
+                        </Label>
+                        {shouldDisplayManagementInputs ? (
+                            <div className="flex items-center">
+                                <input
+                                    id="permis_de_travail-detail"
+                                    type="checkbox"
+                                    checked={editablePermisDeTravail}
+                                    onChange={(e) => setEditablePermisDeTravail(e.target.checked)}
+                                    disabled={areManagementInputsDisabled}
+                                    className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                />
+                                <span className="ml-2 text-sm">{editablePermisDeTravail ? "Requis" : "Non Requis"}</span>
+                            </div>
+                        ) : (
+                            <p className="text-gray-700 bg-gray-200 p-2.5 rounded min-h-[40px] text-sm">
+                                {task.permis_de_travail ? "Oui" : "Non"}
+                            </p>
+                        )}
+                    </div>
                     { (currentUser.role === 'Admin' || (isTaskAssignedToCurrentUserChef && task.status === 'in progress')) && !isTaskClosed && <div className="pt-2"> <Label htmlFor="taskStatusUpdate-detail" className="text-sm">Mettre à jour le Statut :</Label> <Select id="taskStatusUpdate-detail" value={newStatus} onChange={(e) => setNewStatus(e.target.value)} disabled={isStatusSelectDisabled()} className="text-sm"> {getStatusOptions().map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)} </Select> </div> }
                     { currentUser.role === 'Admin' && isTaskClosed && <div className="pt-2"> <Label htmlFor="taskStatusUpdate-detail-admin-closed" className="text-sm">Action sur l'Ordre de travail Clôture :</Label> <Select id="taskStatusUpdate-detail-admin-closed" value={newStatus} onChange={(e) => setNewStatus(e.target.value)} className="text-sm"> {getStatusOptions().map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)} </Select> </div> }
                     { (!isTaskClosed || currentUser.role === 'Admin' || isTaskAssignedToCurrentUserChef ) && <> <div> <Label htmlFor="advancementNote-detail" className="text-sm">Ajouter une Note :</Label> <Textarea id="advancementNote-detail" value={advancementNote} onChange={(e) => setAdvancementNote(e.target.value)} placeholder="Progrès, problèmes..." rows={3} className="text-sm"/> </div> <div> <Label htmlFor="imageUpload-detail" className="text-sm">Telecharger des Images :</Label> <div className="flex items-center justify-center w-full"> <label htmlFor="imageUpload-detail" className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100"> <div className="flex flex-col items-center justify-center pt-5 pb-6"> <ImageUp className="w-8 h-8 mb-2 text-gray-500" /> <p className="mb-1 text-sm text-gray-500"><span className="font-semibold">Cliquez pour telecharger</span></p> <p className="text-xs text-gray-500">PNG, JPG (Max 5Mo)</p> </div> <input id="imageUpload-detail" type="file" multiple className="hidden" onChange={handleFileChange} accept="image/*" /> </label> </div> {imagePreviews.length > 0 && ( <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2"> {imagePreviews.map((previewUrl, index) => ( <div key={index} className="relative group"> <img src={previewUrl} alt={`Aperçu ${index + 1}`} className="h-24 w-full object-cover rounded-md border"/> <button onClick={() => removeImage(index)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 cursor-pointer" aria-label="Supprimer l'image"> <X className="h-3 w-3"/> </button> </div> ))} </div> )} {selectedFiles.length > 0 && <div className="mt-2 text-xs text-gray-600">Selectionne : {selectedFiles.map(f => f.name).join(', ')}</div>} </div> </> }
                 </div>
                 {advancementNotesHistory && advancementNotesHistory.length > 0 && ( <div className="mt-4 p-4 border rounded-md bg-slate-100"> <h4 className="font-semibold text-md mb-2 text-gray-700 border-b pb-2">Historique d'Avancement :</h4> <div className="space-y-2 max-h-60 overflow-y-auto bg-slate-200 p-3 rounded-md border custom-scrollbar"> {advancementNotesHistory.slice().reverse().map((note) => ( <div key={note.id} className="bg-white p-3 rounded-lg shadow hover:shadow-lg transition-all duration-200 cursor-pointer transform hover:-translate-y-0.5" onClick={() => setDetailedAdvancementNote(note)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setDetailedAdvancementNote(note);}} aria-label={`Voir les details de la note du ${new Date(note.date).toLocaleDateString()}`}> <div className="flex justify-between items-center mb-1"> <p className="text-xs text-gray-500"> {new Date(note.date).toLocaleDateString()} par {note.created_by_username || 'Système'} </p> {note.images && note.images.length > 0 && <Camera className="h-4 w-4 text-blue-500 flex-shrink-0" title={`${note.images.length} image(s)`}/>} </div> <p className="font-medium text-gray-800 whitespace-pre-wrap truncate text-sm"> {note.note.substring(0, 120)}{note.note.length > 120 ? '...' : ''} </p> <span className="text-xs text-blue-600 hover:underline mt-1 inline-flex items-center"> Voir les Details <ArrowRight className="h-3 w-3 ml-1"/> </span> </div> ))} </div> </div> )}
             </DialogContent>
-            <DialogFooter> <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Fermer</Button> {currentUser.role === 'Admin' && !isTaskClosed && <Button variant="destructive" onClick={handleDeleteConfirmed} className="mr-auto" disabled={isSubmitting}>{isSubmitting && fieldErrors.submit?.includes("delete") ? 'Suppression en cours...' : <><Trash2 className="h-4 w-4 mr-2" /> Supprimer l'Ordre de travail</>}</Button>} { showSaveButton() && <Button onClick={handleSaveChanges} className="bg-green-600 text-white hover:bg-blue-700" disabled={isSubmitting || (isTaskClosed && currentUser.role !== 'Admin' && !advancementNote.trim() && selectedFiles.length === 0 && newStatus === task.status) } > {isSubmitting && !fieldErrors.submit?.includes("delete") ? 'Enregistrement...' :<><Save className="h-4 w-4 mr-2" /> {isTaskAssignedToCurrentUserChef && task.status === 'assigned' ? "Soumettre les Details" : "Enregistrer les Modifications"} </>} </Button> } </DialogFooter>
+            <DialogFooter>
+                <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Fermer</Button>
+                {['in progress', 'closed'].includes(task.status) && (
+                    <Button variant="outline" onClick={() => onPrintTask(task.id)} disabled={isSubmitting}>
+                        <Printer className="h-4 w-4 mr-2" /> Imprimer
+                    </Button>
+                )}
+                {currentUser.role === 'Admin' && !isTaskClosed && <Button variant="destructive" onClick={handleDeleteConfirmed} className="mr-auto" disabled={isSubmitting}>{isSubmitting && fieldErrors.submit?.includes("delete") ? 'Suppression en cours...' : <><Trash2 className="h-4 w-4 mr-2" /> Supprimer l'Ordre de travail</>}</Button>}
+                { showSaveButton() && <Button onClick={handleSaveChanges} className="bg-green-600 text-white hover:bg-blue-700" disabled={isSubmitting || (isTaskClosed && currentUser.role !== 'Admin' && !advancementNote.trim() && selectedFiles.length === 0 && newStatus === task.status) } > {isSubmitting && !fieldErrors.submit?.includes("delete") ? 'Enregistrement...' :<><Save className="h-4 w-4 mr-2" /> {isTaskAssignedToCurrentUserChef && task.status === 'assigned' ? "Soumettre les Details" : "Enregistrer les Modifications"} </>} </Button> }
+            </DialogFooter>
             {detailedAdvancementNote && ( <AdvancementNoteDetailsModal note={detailedAdvancementNote} isOpen={!!detailedAdvancementNote} onClose={() => setDetailedAdvancementNote(null)} onOpenLightbox={onOpenLightbox} /> )}
         </Dialog>
     );
 };
 
 export default TaskDetailsModal;
-

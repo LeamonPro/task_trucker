@@ -1,7 +1,7 @@
 // src/components/modals/AddTaskChefModal.jsx
 import React, { useState } from 'react';
-import { ListChecks, ShieldCheck, PackageOpen, Wrench, Hourglass, Clock, Save, X } from 'lucide-react';
-import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter, Button, Input, Select, Textarea, Label, ErrorMessage } from '../ui';
+import { ListChecks, ShieldCheck, PackageOpen, Wrench, Hourglass, Clock, Save, X, FileText } from 'lucide-react';
+import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter, Button, Input, Select, Textarea, Label, ErrorMessage, Checkbox } from '../ui';
 import { cn, TASK_TYPE_OPTIONS } from '../../utils';
 
 const AddTaskChefModal = ({ isOpen, onClose, onAddTask, ordresImputation, technicians }) => {
@@ -16,7 +16,8 @@ const AddTaskChefModal = ({ isOpen, onClose, onAddTask, ordresImputation, techni
         start_date: '',
         end_date: '',
         start_time: '', 
-        estimated_hours: '', 
+        estimated_hours: '',
+        permis_de_travail: false,
     };
 
     const [taskData, setTaskData] = useState(initialTaskState);
@@ -24,8 +25,8 @@ const AddTaskChefModal = ({ isOpen, onClose, onAddTask, ordresImputation, techni
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setTaskData(prev => ({ ...prev, [name]: value }));
+        const { name, value, type, checked } = e.target;
+        setTaskData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
         if (formErrors[name]) {
             setFormErrors(prev => ({ ...prev, [name]: null }));
         }
@@ -189,6 +190,15 @@ const AddTaskChefModal = ({ isOpen, onClose, onAddTask, ordresImputation, techni
                         <Input id="end_date-add-chef" name="end_date" type="date" value={taskData.end_date} onChange={handleInputChange} className={formErrors.end_date ? 'ring-1 ring-red-500 border-red-500' : ''} />
                         <ErrorMessage message={formErrors.end_date} />
                     </div>
+                </div>
+                <div>
+                    <Checkbox
+                        id="permis_de_travail-add-chef"
+                        name="permis_de_travail"
+                        checked={taskData.permis_de_travail}
+                        onChange={handleInputChange}
+                        label="Permis de Travail Requis"
+                    />
                 </div>
             </DialogContent>
             <DialogFooter>

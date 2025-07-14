@@ -1,6 +1,6 @@
 // src/components/tasks/TaskCard.jsx
 import React from 'react';
-import { Edit3, Info } from 'lucide-react';
+import { Edit3, Info, FileText } from 'lucide-react';
 import { cn, getTaskTypeLabel } from '../../utils';
 
 const TaskCard = ({ task, onClick, currentUser }) => (
@@ -17,6 +17,7 @@ const TaskCard = ({ task, onClick, currentUser }) => (
                 {task.task_id_display || `Tâche ID: ${task.id}`}
             </h3>
             <div className="flex items-center space-x-2">
+                {task.permis_de_travail && <FileText className="h-5 w-5 text-red-500" title="Permis de travail requis" />}
                 {(currentUser.role === 'Chef de Parc' && task.assignedTo?.trim() === currentUser.name?.trim() && task.status !== 'closed') || (currentUser.role === 'Admin') ? (
                     <Edit3 className="h-5 w-5 text-blue-500 hover:text-blue-700 flex-shrink-0" title="Modifier ou Voir les Details de l'Ordre de travail"/>
                 ) : (
@@ -40,8 +41,10 @@ const TaskCard = ({ task, onClick, currentUser }) => (
             <span>Assigne à : <span className="font-medium text-gray-700">{task.assignedTo || 'N/A'}</span></span>
             {task.technicien_names && task.technicien_names.length > 0 && <span>Techniciens : <span className="font-medium text-gray-700">{task.technicien_names.join(', ')}</span></span>}
             
-            {task.hours_of_work && <span>Heures Travail : <span className="font-medium text-gray-700">{task.hours_of_work}h</span></span>}
             {task.estimated_hours && <span>Heures Est. : <span className="font-medium text-gray-700">{task.estimated_hours}h</span></span>}
+            {task.status === 'closed' && task.actual_hours_worked && (
+                <span>Total Heures Travail : <span className="font-medium text-gray-700">{parseFloat(task.actual_hours_worked).toFixed(2)}h</span></span>
+            )}
             {task.closed_at && <span className="text-red-600">Clôturé le : <span className="font-medium">{new Date(task.closed_at).toLocaleDateString()}</span></span>}
         </div>
     </div>

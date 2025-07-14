@@ -1,6 +1,5 @@
-// src/components/modals/PreventiveModals.jsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { ClipboardList, Save } from 'lucide-react';
+import { ClipboardList, Save, Wrench } from 'lucide-react';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter, Button, Input, Select, Textarea, Label, ErrorMessage, Checkbox } from '../ui';
 
 export const PreventiveTemplateModal = ({ isOpen, onClose, onSave, ordresImputation, templateToEdit }) => {
@@ -105,9 +104,10 @@ export const PreventiveTemplateModal = ({ isOpen, onClose, onSave, ordresImputat
     );
 };
 
-export const PreventiveChecklistModal = ({ isOpen, onClose, onSubmit, checklistData }) => {
+export const PreventiveChecklistModal = ({ isOpen, onClose, onSubmit, checklistData, technicians }) => {
     const [completedItems, setCompletedItems] = useState({});
     const [notes, setNotes] = useState('');
+    const [selectedTechnicianIds, setSelectedTechnicianIds] = useState([]);
     const [formErrors, setFormErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -129,6 +129,7 @@ export const PreventiveChecklistModal = ({ isOpen, onClose, onSubmit, checklistD
             });
             setCompletedItems(initialCompleted);
             setNotes('');
+            setSelectedTechnicianIds([]);
             setFormErrors({});
         }
     }, [isOpen, parsedChecklistItems]);
@@ -136,6 +137,11 @@ export const PreventiveChecklistModal = ({ isOpen, onClose, onSubmit, checklistD
     const handleCheckboxChange = (e) => {
         const { name, checked } = e.target;
         setCompletedItems(prev => ({ ...prev, [name]: checked }));
+    };
+    
+    const handleTechnicianChange = (e) => {
+        const selectedIds = Array.from(e.target.selectedOptions, option => option.value);
+        setSelectedTechnicianIds(selectedIds);
     };
 
     const handleSubmit = async () => {
@@ -157,7 +163,8 @@ export const PreventiveChecklistModal = ({ isOpen, onClose, onSubmit, checklistD
             await onSubmit({
                 ordre_imputation_id: ordreImputationId,
                 checklist_items: checklistItemsPayload,
-                notes: notes.trim()
+                notes: notes.trim(),
+                technicien_ids: selectedTechnicianIds
             });
             onClose();
         } catch (error) {
@@ -203,6 +210,15 @@ export const PreventiveChecklistModal = ({ isOpen, onClose, onSubmit, checklistD
                     ) : (
                         <p className="text-sm text-gray-500 italic">Aucune tâche spécifique trouvée dans la notification.</p>
                     )}
+                </div>
+
+                <div>
+                    <Label htmlFor="technicians-checklist" className="flex items-center"><Wrench className="h-4 w-4 mr-1 text-gray-600" />Techniciens (Optionnel)</Label>
+                    <Select id="technicians-checklist" name="technicien_ids" multiple value={selectedTechnicianIds} onChange={handleTechnicianChange} className='h-auto min-h-[100px]'>
+                        {technicians.map(tech => (
+                            <option key={tech.id_technician} value={tech.id_technician}>{tech.name}</option>
+                        ))}
+                    </Select>
                 </div>
 
                 <div>
